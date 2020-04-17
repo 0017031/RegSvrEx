@@ -27,3 +27,49 @@ Credits
 
 The program was written by [Rama Krishna Vavilala](http://www.codeproject.com/script/Membership/View.aspx?mid=15383)
 and I (Vadim Zeitlin) have only built it in 64 bits.
+
+Extra Notes:
+-------
+https://www.codeproject.com/Messages/3361407/Solution-to-problems-with-Windows-Vista-Windows-7.aspx
+The current/first version of regsvrex doesn't work with Windows Vista or later. This is due to increased security. For more information see Microsoft KB article 935200: Error message when an application calls the RegisterTypeLib API to register a type library in Windows Vista: "Access denied".
+
+The article describes two solutions:
+1. Set environment variable OAPERUSERTLIBREG to 1:
+Hide   Copy Code
+set OAPERUSERTLIBREG=1
+regsvrex <parameters>
+
+2. Add a call to OaEnablePerUserTLibRegistration to the regsvrex source code.
+
+typedef void (*MYPROC)(); 
+HINSTANCE hModForOle;
+
+HRESULT CallOaEnable()
+{ 
+	HRESULT hr = S_OK;
+
+	hModForOle = LoadLibrary(TEXT("Oleaut32.dll"));
+	MYPROC ProcAdd; 
+
+	if (hModForOle != NULL)
+	{
+		ProcAdd = (MYPROC) GetProcAddress(hModForOle, "OaEnablePerUserTLibRegistration"); 
+		
+		if (NULL != ProcAdd)
+		{
+			(ProcAdd)();
+			hr = S_OK;
+		}
+		else
+			hr = GetHresultFromWin32();
+	}
+	else
+		hr = GetHresultFromWin32();
+		
+	return hr;
+}
+
+before calling RegisterExe/RegisterDll, you should call CallOaEnable(). and after registering dll/exe, you should also call FreeLibrary(hModForOle). if you call FreeLibrary(hModForOle) before registering, then you'll meet the 'access denied' problem again.
+
+
+
